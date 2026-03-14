@@ -30,10 +30,20 @@ uploaded_file = st.file_uploader("Upload Excel or CSV (must have columns: email,
                                type=["csv", "xlsx"])
 
 if uploaded_file:
-    if uploaded_file.name.endswith('.csv'):
-        df = pd.read_csv(uploaded_file)
-    else:
-        df = pd.read_excel(uploaded_file)
+    try:
+        if uploaded_file.name.endswith('.csv'):
+            df = pd.read_csv(uploaded_file)
+        else:
+            df = pd.read_excel(uploaded_file)
+    except ImportError as e:
+        st.error(
+            "Excel support requires the 'openpyxl' package. "
+            "Install it with: pip install openpyxl"
+        )
+        st.stop()
+    except Exception as e:
+        st.error(f"Could not read uploaded file: {e}")
+        st.stop()
     
     # Add checkbox column
     df["Send?"] = False
