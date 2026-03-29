@@ -246,14 +246,14 @@ def create_message(
     return message, row_dict
 
 
-def connect_smtp(smtp_server, port, email, password):
+def connect_smtp(smtp_server, port, username, password):
     if port == 465:
         server = smtplib.SMTP_SSL(smtp_server, port)
     else:
         server = smtplib.SMTP(smtp_server, port)
         server.starttls()
 
-    server.login(email, password)
+    server.login(username, password)
     return server
 
 
@@ -301,8 +301,9 @@ def send_bulk_emails(
     selected,
     smtp_server,
     port,
-    your_email,
+    smtp_username,
     password,
+    your_email,
     save_to_sent,
     imap_server,
     imap_port,
@@ -317,7 +318,7 @@ def send_bulk_emails(
     imap_conn = None
 
     try:
-        server = connect_smtp(smtp_server, port, your_email, password)
+        server = connect_smtp(smtp_server, port, smtp_username, password)
         imap_conn = connect_imap_if_enabled(
             save_to_sent,
             imap_server,
@@ -365,23 +366,37 @@ def send_bulk_emails(
 
 
 def render_sidebar_settings():
-    st.sidebar.header("Mozeep Account")
-    smtp_server = st.sidebar.text_input("SMTP Server", value="mail.mozeep.com")
-    port = st.sidebar.number_input("Port", value=465)
-    your_email = st.sidebar.text_input("Your Mozeep Email (full address)")
-    password = st.sidebar.text_input("Password / App Password", type="password")
+    st.sidebar.header("Email Account (SendGrid)")
+    st.sidebar.info(
+        "📧 **SMTP Auth**: Thử email + password trước nha (bỏ trống mục SMTP username). Hong được thì xài SMTP username='apikey' + SendGrid API key (này thử đăng nhập bằng tk cty ở link dưới coi vô lấy đc ko, hong đc thì hỏi mấy anh IT =D). "
+        "[Get API key](https://app.sendgrid.com/settings/api_keys)"
+    )
+    smtp_server = st.sidebar.text_input("SMTP Server", value="smtp.sendgrid.net")
+    port = st.sidebar.number_input("SMTP Port", value=587)
+    your_email = st.sidebar.text_input("Your Email (full address)")
+    smtp_username = st.sidebar.text_input("SMTP Username", value="", placeholder="Bỏ trống nếu dùng email")
+    password = st.sidebar.text_input("SMTP Password / API Key", type="password")
 
     st.sidebar.subheader("Sent Folder Sync (optional)")
     save_to_sent = st.sidebar.checkbox("Save a copy to Sent folder", value=True)
-    imap_server = st.sidebar.text_input("IMAP Server", value="mail.mozeep.com")
+    imap_server = st.sidebar.text_input(
+        "IMAP Server (for Sent folder only)",
+        value="mail.mozeep.com",
+        help="Your mailbox provider for receiving/syncing Sent folder. SendGrid SMTP is send-only."
+    )
     imap_port = st.sidebar.number_input("IMAP Port", value=993)
     sent_folder = st.sidebar.text_input("Sent Folder Name", value="Sent")
+
+    # Use email as username if no custom username provided
+    if not smtp_username.strip():
+        smtp_username = your_email
 
     return (
         smtp_server,
         port,
-        your_email,
+        smtp_username,
         password,
+        your_email,
         save_to_sent,
         imap_server,
         imap_port,
@@ -397,8 +412,9 @@ def main():
     (
         smtp_server,
         port,
-        your_email,
+        smtp_username,
         password,
+        your_email,
         save_to_sent,
         imap_server,
         imap_port,
@@ -429,7 +445,7 @@ def main():
 
     if st.button("🚀 SEND SELECTED EMAILS", type="primary"):
         if not your_email or not password:
-            st.error("Please enter your Mozeep email and password in sidebar")
+            st.error("Please enter your email and SendGrid API key in sidebar")
             return
 
         if len(selected) == 0:
@@ -440,8 +456,9 @@ def main():
             selected,
             smtp_server,
             port,
-            your_email,
+            smtp_username,
             password,
+            your_email,
             save_to_sent,
             imap_server,
             imap_port,
